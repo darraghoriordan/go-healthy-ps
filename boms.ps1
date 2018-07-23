@@ -10,42 +10,52 @@ param (
 $ErrorActionPreference = "Stop"
 
 # SETUP
-$fileSuffix = '*.doc'
-$matchRegex = '^([A-Z]{3}[0-9]{4})[ ]*[v|V]([0-9]+)(.*)\.doc$'
+# don't know enough regex to make this a single with an OR
+$regExs = @()
+$regExs += new-object System.Text.RegularExpressions.Regex('^(?<productCode>[A-Z]{3}[0-9]{4}[GMP]*)[ ]*[v|V](?<versionNumber>[0-9]+)(?<productDescription>.*)\.(doc|pdf|DOC|PDF)$')
+$regExs += new-object System.Text.RegularExpressions.Regex('^(?<productCode>[A-Z]{3}[0-9]{4}[GMP]*)[ ]*(?<productDescription>.*)[v|V](?<versionNumber>[0-9]+)\.(doc|pdf|DOC|PDF)$')
+
 $results = @()
 $outputCsvFile = 'c:\temp\bom_versions.csv'
-$defaultBomPAth = 'C:\Users\'
-
+$defaultBomPAth = 'C:\Users\darragh\Downloads\whyarepeoplesoannoying'
 
 # for testing
 if ([string]::IsNullOrEmpty($bomPath)) {
     $bomPath = $defaultBomPAth
 }
 
-
-$filenames = Get-ChildItem -Path $bomPath -Recurse -Include *.doc | Select -exp Name
+$filenames = Get-ChildItem -Path $bomPath -Recurse | Select -exp Name
 
 foreach ($filename in $filenames){
-
- Write-Output "Testing file ($filename)"
-    $match = [regex]::Match($filename, $matchRegex)
     $details = $null
-    if ($match.Success) {
+    Write-Output "Testing file ($filename)"
+
+    foreach ($regex in $regExs){
+        $match = $regex.Match($filename)
+        
+        if ($match.Success) {
+            Write-Output 'MATCH!'
+            $details = @{            
+                Name = $match.Groups["productCode"]              
+                Version = $match.Groups['versionNumber']                  
+                Description = $match.Groups['productDescription']
+                RawFileName = $filename
+            }                           
+            Write-Output $details
+            break
+        }
+    }
+    if ($details -eq $null){
         $details = @{            
-                Name             = $match.Captures.Groups[1]              
-                Version     = $match.Captures.Groups[2]                  
-                Description      = $match.Captures.Groups[3]  
-        }                           
-        $results += New-Object PSObject -Property $details  
+                Name = ''              
+                Version = ''              
+                Description = ''
+                RawFileName = $filename
+            }                   
     }
-    if ($details -ne $null ) {
-        Write-Output 'MATCH!'
-        Write-Output $details}
-    else {
-        Write-Warning 'file did not match ($filename)'
-    }
+    $results += New-Object PSObject -Property $details
 }
 
 Write-Output "Writing results to: $outputCsvFile"
-$results | Select-Object Name, Version, Description | Export-Csv $outputCsvFile -NoTypeInformation
+$results | Select-Object Name, Version, Description, RawFileName | Export-Csv $outputCsvFile -NoTypeInformation
 
