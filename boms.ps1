@@ -17,7 +17,7 @@ $regExs += new-object System.Text.RegularExpressions.Regex('^(?<productCode>[A-Z
 
 $results = @()
 $outputCsvFile = 'c:\temp\bom_versions.csv'
-$defaultBomPAth = 'C:\Users\darragh\Downloads\whyarepeoplesoannoying'
+$defaultBomPAth = 'C:\Users\darragh\Downloads\'
 
 # for testing
 if ([string]::IsNullOrEmpty($bomPath)) {
